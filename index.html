@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartAttend — Intelligent Attendance System</title>
+<!-- Fonts: loads from Google if online, gracefully falls back offline -->
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2234;
+    --border: #1e293b;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --success: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --sub: #94a3b8;
+    --card: #131c2e;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:var(--bg); color:var(--text); font-family:'Space Grotesk',Arial,sans-serif; }
+  #root { height:100%; }
+  ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:var(--surface); } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  /* Layout */
+  .app { display:flex; height:100vh; overflow:hidden; }
+  .sidebar { width:260px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+  .main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+
+  /* Sidebar */
+  .sidebar-header { padding:24px 20px 16px; border-bottom:1px solid var(--border); }
+  .logo { display:flex; align-items:center; gap:10px; }
+  .logo-icon { width:36px; height:36px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .logo-text { font-size:16px; font-weight:700; letter-spacing:-.3px; }
+  .logo-sub { font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+  .user-badge { margin-top:14px; padding:10px 12px; background:var(--surface2); border-radius:10px; display:flex; align-items:center; gap:10px; }
+  .user-avatar { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; }
+  .user-info .name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px; }
+  .user-info .role { font-size:11px; color:var(--muted); text-transform:capitalize; }
+  .role-pill { font-size:10px; padding:2px 7px; border-radius:20px; font-weight:600; }
+  .role-admin { background:#1e3a5f; color:#60a5fa; }
+  .role-teacher { background:#1a3025; color:#34d399; }
+  .role-student { background:#2d1f3e; color:#a78bfa; }
+
+  .nav { flex:1; padding:12px 10px; overflow-y:auto; }
+  .nav-section { margin-bottom:20px; }
+  .nav-label { font-size:10px; color:var(--muted); font-weight:600; letter-spacing:.8px; text-transform:uppercase; padding:0 8px; margin-bottom:6px; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px; cursor:pointer; font-size:13.5px; color:var(--sub); transition:all .15s; margin-bottom:2px; }
+  .nav-item:hover { background:var(--surface2); color:var(--text); }
+  .nav-item.active { background:rgba(59,130,246,.15); color:var(--accent); }
+  .nav-item .nav-icon { font-size:16px; width:20px; text-align:center; }
+  .nav-logout { padding:12px 16px; border-top:1px solid var(--border); }
+  .btn-logout { width:100%; padding:9px; background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.2); color:#ef4444; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; transition:all .15s; }
+  .btn-logout:hover { background:rgba(239,68,68,.2); }
+
+  /* Topbar */
+  .topbar { padding:16px 28px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg); flex-shrink:0; }
+  .page-title { font-size:20px; font-weight:700; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:1px; }
+  .topbar-right { display:flex; align-items:center; gap:12px; }
+  .time-display { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); }
+
+  /* Content */
+  .content { flex:1; padding:24px 28px; }
+
+  /* Cards */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; }
+  .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .card-title { font-size:15px; font-weight:600; }
+  .card-sub { font-size:12px; color:var(--muted); }
+
+  /* Stats Grid */
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; position:relative; overflow:hidden; }
+  .stat-card::before { content:''; position:absolute; top:0; right:0; width:80px; height:80px; border-radius:0 14px 0 80px; opacity:.07; }
+  .stat-card.blue::before { background:var(--accent); }
+  .stat-card.green::before { background:var(--success); }
+  .stat-card.amber::before { background:var(--warn); }
+  .stat-card.red::before { background:var(--danger); }
+  .stat-card.purple::before { background:var(--accent2); }
+  .stat-icon { font-size:22px; margin-bottom:10px; }
+  .stat-val { font-size:28px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .stat-label { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  /* Buttons */
+  .btn { padding:9px 18px; border-radius:8px; font-family:inherit; font-size:13.5px; font-weight:500; cursor:pointer; border:none; transition:all .15s; display:inline-flex; align-items:center; gap:7px; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:#2563eb; }
+  .btn-success { background:var(--success); color:#fff; }
+  .btn-success:hover { background:#059669; }
+  .btn-danger { background:var(--danger); color:#fff; }
+  .btn-danger:hover { background:#dc2626; }
+  .btn-ghost { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+  .btn-ghost:hover { background:var(--border); }
+  .btn-sm { padding:6px 12px; font-size:12px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* Table */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface); }
+  td { padding:12px 14px; font-size:13.5px; border-bottom:1px solid rgba(30,41,59,.5); }
+  tr:hover td { background:rgba(255,255,255,.02); }
+  tr:last-child td { border-bottom:none; }
+
+  /* Badges */
+  .badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge-green { background:#052e16; color:#4ade80; }
+  .badge-red { background:#450a0a; color:#f87171; }
+  .badge-yellow { background:#422006; color:#fbbf24; }
+  .badge-blue { background:#0c1a3e; color:#60a5fa; }
+  .badge-gray { background:#1e293b; color:#94a3b8; }
+
+  /* Forms */
+  .form-group { margin-bottom:16px; }
+  label { display:block; font-size:12px; font-weight:600; color:var(--sub); margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px; }
+  input, select, textarea { width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:8px; font-family:inherit; font-size:13.5px; outline:none; transition:border .15s; }
+  input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+  input::placeholder { color:var(--muted); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+  /* Modal */
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; max-width:560px; width:100%; max-height:85vh; overflow-y:auto; }
+  .modal-header { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .modal-title { font-size:16px; font-weight:700; }
+  .modal-body { padding:24px; }
+  .modal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+  .btn-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:18px; padding:4px; }
+
+  /* Login */
+  .login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); }
+  .login-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:40px; width:100%; max-width:420px; }
+  .login-logo { text-align:center; margin-bottom:28px; }
+  .login-icon { width:56px; height:56px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:16px; display:inline-flex; align-items:center; justify-content:center; font-size:26px; margin-bottom:14px; }
+  .login-title { font-size:22px; font-weight:700; }
+  .login-sub { font-size:13px; color:var(--muted); margin-top:4px; }
+
+  /* Camera */
+  .camera-wrap { position:relative; background:#000; border-radius:12px; overflow:hidden; }
+  .camera-video { width:100%; display:block; border-radius:12px; }
+  .camera-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .face-guide { width:180px; height:220px; border:2px solid var(--accent); border-radius:50%; opacity:.6; }
+
+  /* Progress */
+  .progress-bar { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:3px; transition:width .3s; }
+  .progress-blue { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+  .progress-green { background:var(--success); }
+  .progress-red { background:var(--danger); }
+
+  /* Alert */
+  .alert { padding:12px 16px; border-radius:8px; font-size:13.5px; display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .alert-error { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.2); color:#f87171; }
+  .alert-success { background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.2); color:#34d399; }
+  .alert-warn { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.2); color:#fbbf24; }
+  .alert-info { background:rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.2); color:#60a5fa; }
+
+  /* Attendance percentage ring */
+  .att-ring { position:relative; width:90px; height:90px; }
+  .att-ring svg { transform:rotate(-90deg); }
+  .att-ring-val { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .att-ring-pct { font-size:18px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .att-ring-lbl { font-size:10px; color:var(--muted); }
+
+  /* Geofence map placeholder */
+  .map-container { background:var(--surface2); border:1px solid var(--border); border-radius:12px; height:300px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; color:var(--muted); font-size:13px; }
+
+  /* Loading */
+  .loading { display:flex; align-items:center; justify-content:center; height:200px; flex-direction:column; gap:14px; color:var(--muted); }
+  .spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Tabs */
+  .tabs { display:flex; gap:4px; background:var(--surface2); padding:4px; border-radius:10px; margin-bottom:20px; }
+  .tab { flex:1; padding:8px; text-align:center; border-radius:7px; cursor:pointer; font-size:13px; font-weight:500; color:var(--muted); transition:all .15s; }
+  .tab.active { background:var(--accent); color:#fff; }
+
+  /* Empty state */
+  .empty { text-align:center; padding:50px 20px; color:var(--muted); }
+  .empty-icon { font-size:40px; margin-bottom:10px; }
+  .empty-text { font-size:14px; }
+
+  /* Offline badge */
+  .offline-badge { position:fixed; top:14px; right:14px; background:var(--warn); color:#000; font-size:11px; font-weight:700; padding:5px 10px; border-radius:20px; z-index:9999; display:none; }
+  .offline-badge.show { display:block; }
+
+  /* Responsive */
+  @media(max-width:768px) {
+    .sidebar { display:none; }
+    .stats-grid { grid-template-columns:1fr 1fr; }
+    .form-row, .form-row-3 { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="offline-badge" id="offlineBadge">⚠ OFFLINE MODE</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+//  STATE & CONFIG
+// ──────────────────────────────────────────────────────────────────────────────
+const API = 'http://localhost:5000/api';
+let state = {
+  user: null, token: null, page: 'dashboard',
+  loading: false, error: null,
+  students: null, teachers: null, subjects: null, sessions: null, violations: null,
+  dashStats: {}, currentSession: null,
+  modal: null, modalData: null,
+  offline: !navigator.onLine,
+  offlineQueue: JSON.parse(localStorage.getItem('sa_offline_queue') || '[]'),
+  cachedData: JSON.parse(localStorage.getItem('sa_cached_data') || '{}')
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  OFFLINE / ONLINE DETECTION
+// ──────────────────────────────────────────────────────────────────────────────
+window.addEventListener('online',  () => { state.offline = false; document.getElementById('offlineBadge').classList.remove('show'); syncOfflineQueue(); render(); });
+window.addEventListener('offline', () => { state.offline = true;  document.getElementById('offlineBadge').classList.add('show'); render(); });
+if (!navigator.onLine) document.getElementById('offlineBadge').classList.add('show');
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  API HELPER
+// ──────────────────────────────────────────────────────────────────────────────
+async function api(method, path, body=null, offlineKey=null) {
+  if (state.offline) {
+    if (offlineKey && state.cachedData[offlineKey]) return state.cachedData[offlineKey];
+    if (method !== 'GET') {
+      state.offlineQueue.push({ method, path, body, ts: Date.now() });
+      localStorage.setItem('sa_offline_queue', JSON.stringify(state.offlineQueue));
+      return { offline: true, queued: true };
+    }
+    throw new Error('Offline: No cached data');
+  }
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (state.token) opts.headers['Authorization'] = `Bearer ${state.token}`;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  if (method === 'GET' && offlineKey) {
+    state.cachedData[offlineKey] = data;
+    localStorage.setItem('sa_cached_data', JSON.stringify(state.cachedData));
+  }
+  return data;
+}
+
+async function syncOfflineQueue() {
+  if (!state.offlineQueue.length) return;
+  const queue = [...state.offlineQueue];
+  state.offlineQueue = [];
+  localStorage.removeItem('sa_offline_queue');
+  for (const item of queue) {
+    try { await api(item.method, item.path, item.body); } catch(e) { console.warn('Sync failed:', e); }
+  }
+  if (state.user) loadPageData();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  AUTH
+// ──────────────────────────────────────────────────────────────────────────────
+async function login(email, password) {
+  state.loading = true; state.error = null; render();
+  try {
+    const data = await api('POST', '/auth/login', { email, password });
+    state.token = data.token;
+    state.user  = data.user;
+    localStorage.setItem('sa_token', data.token);
+    localStorage.setItem('sa_user', JSON.stringify(data.user));
+    state.page = 'dashboard';
+    await loadPageData();
+  } catch(e) { state.error = e.message; }
+  state.loading = false; render();
+}
+
+function logout() {
+  state.token = null; state.user = null;
+  state.students = []; state.teachers = []; state.subjects = [];
+  localStorage.removeItem('sa_token'); localStorage.removeItem('sa_user');
+  render();
+}
+
+// Try restore session
+(function restoreSession() {
+  const t = localStorage.getItem('sa_token');
+  const u = localStorage.getItem('sa_user');
+  if (t && u) { state.token = t; state.user = JSON.parse(u); }
+})();
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  DATA LOADING
+// ──────────────────────────────────────────────────────────────────────────────
+async function loadPageData() {
+  if (!state.user) return;
+  const role = state.user.role;
+  try {
+    if (state.page === 'timetable') state.timetable = await api('GET', '/admin/timetable', null, 'timetable');
+    if (state.page === 'dashboard') {
+      if (role === 'admin') state.dashStats = await api('GET', '/admin/dashboard', null, 'dashboard');
+      else if (role === 'teacher') state.dashStats = await api('GET', '/teacher/dashboard', null, 'teacher_dash');
+      else state.dashStats = await api('GET', '/student/dashboard', null, 'student_dash');
+    }
+    if (state.page === 'students' && role !== 'student') state.students = await api('GET', '/admin/students', null, 'students');
+    if (state.page === 'teachers' && role === 'admin') state.teachers = await api('GET', '/admin/teachers', null, 'teachers');
+    if (state.page === 'subjects') state.subjects = await api('GET', '/admin/subjects', null, 'subjects');
+    if (state.page === 'sessions') state.sessions = await api('GET', '/attendance/sessions', null, 'sessions');
+    if (state.page === 'attendance' && role === 'student') {
+      const data = await api('GET', '/student/attendance', null, 'my_att');
+      state.myAttendance = data;
+    }
+    if (state.page === 'violations') state.violations = await api('GET', '/geofence/violations', null, 'violations');
+  } catch(e) { console.warn('Load error:', e.message); }
+  render();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  RENDER ENGINE
+// ──────────────────────────────────────────────────────────────────────────────
+function render() {
+  const root = document.getElementById('root');
+  if (!state.user) { root.innerHTML = renderLogin(); bindLogin(); return; }
+  root.innerHTML = renderApp();
+  bindNav(); bindPage();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  LOGIN PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderLogin() {
+  return `
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-icon">🎓</div>
+      <div class="login-title">SmartAttend</div>
+      <div class="login-sub">2nd Year · 2nd Semester · CSE</div>
+    </div>
+    ${state.error ? `<div class="alert alert-error">⚠ ${state.error}</div>` : ''}
+    ${state.offline ? `<div class="alert alert-warn">📡 Offline mode — using cached credentials</div>` : ''}
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="loginEmail" placeholder="admin@college.edu or 24981a05xx@college.edu" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPw" placeholder="Default: roll number / admin@123" />
+    </div>
+    <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;padding:12px;" ${state.loading?'disabled':''}>
+      ${state.loading ? '<span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Signing in...' : '🔐 Sign In'}
+    </button>
+    <div style="margin-top:20px; padding:14px; background:var(--surface2); border-radius:10px; font-size:12px; color:var(--muted); line-height:1.8;">
+      <strong style="color:var(--sub);">Default Credentials</strong><br>
+      Admin: admin@college.edu / admin@123<br>
+      Students: 24981a05xx@college.edu / roll_number<br>
+      Teachers: Set by admin
+    </div>
+  </div>
+</div>`;
+}
+
+function bindLogin() {
+  document.getElementById('loginBtn')?.addEventListener('click', () => {
+    const e = document.getElementById('loginEmail').value.trim();
+    const p = document.getElementById('loginPw').value;
+    if (e && p) login(e, p);
+  });
+  document.getElementById('loginPw')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const em = document.getElementById('loginEmail').value.trim();
+      const pw = document.getElementById('loginPw').value;
+      if (em && pw) login(em, pw);
+    }
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  MAIN APP SHELL
+// ──────────────────────────────────────────────────────────────────────────────
+function getNavItems() {
+  const role = state.user.role;
+  const items = [
+    { page:'dashboard', icon:'📊', label:'Dashboard', roles:['admin','teacher','student'] },
+    { page:'students',  icon:'👥', label:'Students',  roles:['admin','teacher'] },
+    { page:'teachers',  icon:'👨‍🏫', label:'Teachers',  roles:['admin'] },
+    { page:'subjects',  icon:'📚', label:'Subjects',  roles:['admin','teacher'] },
+    { page:'sessions',  icon:'📋', label:'Sessions',  roles:['admin','teacher'] },
+    { page:'take-attendance', icon:'✅', label:'Take Attendance', roles:['teacher'] },
+    { page:'attendance', icon:'📅', label:'My Attendance', roles:['student'] },
+    { page:'face-register', icon:'🎭', label:'Face Register', roles:['admin','student'] },
+    { page:'timetable',  icon:'🗓️', label:'Timetable',  roles:['admin','teacher','student'] },
+    { page:'violations',icon:'🚨', label:'Violations', roles:['admin','teacher'] },
+    { page:'geofence',  icon:'📍', label:'Geofence Setup', roles:['admin'] },
+    { page:'profile',   icon:'⚙️', label:'Profile', roles:['admin','teacher','student'] }
+  ];
+  return items.filter(i => i.roles.includes(role));
+}
+
+function renderApp() {
+  const user = state.user;
+  const roleClass = `role-${user.role}`;
+  const navItems = getNavItems();
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+  const dateStr = now.toLocaleDateString('en-IN', {weekday:'short',day:'2-digit',month:'short'});
+
+  return `
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">🎓</div>
+        <div>
+          <div class="logo-text">SmartAttend</div>
+          <div class="logo-sub">CSE · 2Y · 2S</div>
+        </div>
+      </div>
+      <div class="user-badge">
+        <div class="user-avatar">${user.name[0].toUpperCase()}</div>
+        <div class="user-info" style="flex:1;min-width:0;">
+          <div class="name">${user.name}</div>
+          <div class="role">${user.role} <span class="role-pill ${roleClass}">${user.role}</span></div>
+        </div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">
+        <div class="nav-label">Navigation</div>
+        ${navItems.map(i => `
+          <div class="nav-item ${state.page===i.page?'active':''}" data-page="${i.page}">
+            <span class="nav-icon">${i.icon}</span>
+            <span>${i.label}</span>
+          </div>`).join('')}
+      </div>
+    </nav>
+    <div class="nav-logout"><button class="btn-logout" id="logoutBtn">🚪 Sign Out</button></div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">${getPageTitle()}</div>
+        <div class="page-sub">${getPageSub()}</div>
+      </div>
+      <div class="topbar-right">
+        ${state.offline?`<span class="badge badge-yellow">📡 Offline</span>`:'<span class="badge badge-green">🟢 Online</span>'}
+        <div class="time-display">${timeStr} · ${dateStr}</div>
+      </div>
+    </div>
+    <div class="content" id="pageContent">
+      ${renderPage()}
+    </div>
+  </div>
+</div>
+${state.modal ? renderModal() : ''}`;
+}
+
+function getPageTitle() {
+  const titles = {
+    timetable:'Timetable',
+    dashboard:'Dashboard', students:'Student Management', teachers:'Teacher Management',
+    subjects:'Subject Management', sessions:'Attendance Sessions',
+    'take-attendance':'Take Attendance', attendance:'My Attendance',
+    'face-register':'Face Registration', violations:'Geofence Violations',
+    geofence:'Geofence Setup', profile:'Profile & Settings'
+  };
+  return titles[state.page] || 'Dashboard';
+}
+function getPageSub() {
+  const subs = {
+    timetable:'Weekly class schedule',
+    dashboard:'Overview of attendance system',
+    students:'Manage student records',
+    teachers:'Manage faculty',
+    subjects:'2nd Year 2nd Semester Subjects',
+    sessions:'Create & manage class sessions',
+    'take-attendance':'Mark attendance via face recognition',
+    attendance:'View your attendance records',
+    'face-register':'Register student faces for recognition',
+    violations:'Students outside campus boundary',
+    geofence:'Configure campus boundary',
+    profile:'Update your profile & password'
+  };
+  return subs[state.page] || '';
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  PAGE ROUTER
+// ──────────────────────────────────────────────────────────────────────────────
+function renderPage() {
+  switch(state.page) {
+    case 'timetable':       return renderTimetable();
+    case 'dashboard':       return renderDashboard();
+    case 'students':        return renderStudents();
+    case 'teachers':        return renderTeachers();
+    case 'subjects':        return renderSubjects();
+    case 'sessions':        return renderSessions();
+    case 'take-attendance': return renderTakeAttendance();
+    case 'attendance':      return renderMyAttendance();
+    case 'face-register':   return renderFaceRegister();
+    case 'violations':      return renderViolations();
+    case 'geofence':        return renderGeofence();
+    case 'profile':         return renderProfile();
+    default:                return '<div class="loading"><div class="spinner"></div></div>';
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  DASHBOARD
+// ──────────────────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const s = state.dashStats;
+  const role = state.user.role;
+
+  if (role === 'admin') {
+    return `
+<div class="stats-grid">
+  <div class="stat-card blue"><div class="stat-icon">👥</div><div class="stat-val">${s.total_students||0}</div><div class="stat-label">Total Students</div></div>
+  <div class="stat-card green"><div class="stat-icon">👨‍🏫</div><div class="stat-val">${s.total_teachers||0}</div><div class="stat-label">Faculty Members</div></div>
+  <div class="stat-card purple"><div class="stat-icon">📚</div><div class="stat-val">${s.total_subjects||0}</div><div class="stat-label">Subjects</div></div>
+  <div class="stat-card amber"><div class="stat-icon">✅</div><div class="stat-val">${s.today_attendance||0}</div><div class="stat-label">Today's Present</div></div>
+  <div class="stat-card green"><div class="stat-icon">🎭</div><div class="stat-val">${s.face_registered||0}</div><div class="stat-label">Faces Registered</div></div>
+  <div class="stat-card red"><div class="stat-icon">🚨</div><div class="stat-val">${s.violations_today||0}</div><div class="stat-label">Violations Today</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Face Registration Status</div></div>
+    <div style="display:flex;align-items:center;gap:20px;">
+      <div>
+        <div style="font-size:30px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--success)">${s.face_registered||0}</div>
+        <div style="font-size:12px;color:var(--muted)">Registered</div>
+      </div>
+      <div>
+        <div style="font-size:30px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--warn)">${s.face_pending||0}</div>
+        <div style="font-size:12px;color:var(--muted)">Pending</div>
+      </div>
+    </div>
+    <div class="progress-bar" style="margin-top:14px;">
+      <div class="progress-fill progress-green" style="width:${s.total_students?(s.face_registered/s.total_students*100):0}%"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Quick Actions</div></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-primary btn-sm" data-page="students">➕ Add Student</button>
+      <button class="btn btn-ghost btn-sm" data-page="teachers">➕ Add Teacher</button>
+      <button class="btn btn-ghost btn-sm" data-page="geofence">📍 Set Boundary</button>
+    </div>
+  </div>
+</div>`;
+  }
+
+  if (role === 'teacher') {
+    const teacher = s.teacher || {};
+    const todaySessions = s.today_sessions || [];
+    return `
+<div class="stats-grid">
+  <div class="stat-card blue"><div class="stat-icon">📋</div><div class="stat-val">${s.total_sessions||0}</div><div class="stat-label">Total Sessions</div></div>
+  <div class="stat-card green"><div class="stat-icon">📚</div><div class="stat-val">${(s.subjects||[]).length}</div><div class="stat-label">My Subjects</div></div>
+  <div class="stat-card amber"><div class="stat-icon">📅</div><div class="stat-val">${todaySessions.length}</div><div class="stat-label">Today's Sessions</div></div>
+</div>
+<div class="card">
+  <div class="card-header"><div class="card-title">Today's Sessions</div><button class="btn btn-primary btn-sm" data-page="take-attendance">➕ New Session</button></div>
+  ${todaySessions.length === 0 ? '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No sessions today</div></div>' :
+  `<div class="table-wrap"><table>
+    <thead><tr><th>Subject</th><th>Section</th><th>Start</th><th>Status</th><th>Present</th></tr></thead>
+    <tbody>${todaySessions.map(s=>`<tr>
+      <td>${s.subject_name}</td><td>${s.section}</td><td>${s.start_time}</td>
+      <td>${s.is_active?'<span class="badge badge-green">Active</span>':'<span class="badge badge-gray">Closed</span>'}</td>
+      <td>${s.attendance_count}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`}
+</div>`;
+  }
+
+  // Student dashboard
+  const stats = s.stats || {};
+  const pct = stats.percentage || 0;
+  const pctColor = pct >= 75 ? 'var(--success)' : pct >= 60 ? 'var(--warn)' : 'var(--danger)';
+  const radius = 36, circ = 2 * Math.PI * radius;
+  const fillLen = (pct / 100) * circ;
+  return `
+<div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;">
+  <div class="card" style="text-align:center;min-width:160px;">
+    <div class="att-ring" style="margin:0 auto 10px;">
+      <svg width="90" height="90" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="${radius}" fill="none" stroke="var(--border)" stroke-width="6"/>
+        <circle cx="45" cy="45" r="${radius}" fill="none" stroke="${pctColor}" stroke-width="6"
+          stroke-dasharray="${fillLen} ${circ}" stroke-linecap="round"/>
+      </svg>
+      <div class="att-ring-val">
+        <div class="att-ring-pct" style="color:${pctColor}">${pct}%</div>
+        <div class="att-ring-lbl">Attendance</div>
+      </div>
+    </div>
+    ${pct < 75 ? `<div class="alert alert-warn" style="font-size:11px;margin:0;">⚠ Below 75% threshold</div>` : `<div class="alert alert-success" style="font-size:11px;margin:0;">✅ Good standing</div>`}
+  </div>
+  <div>
+    <div class="stats-grid" style="margin-bottom:16px;">
+      <div class="stat-card blue"><div class="stat-icon">📅</div><div class="stat-val">${stats.total_classes||0}</div><div class="stat-label">Total Classes</div></div>
+      <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-val">${stats.present||0}</div><div class="stat-label">Present</div></div>
+      <div class="stat-card red"><div class="stat-icon">❌</div><div class="stat-val">${stats.absent||0}</div><div class="stat-label">Absent</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px;">Today's Classes</div>
+      ${(s.today||[]).length===0 ? '<div style="color:var(--muted);font-size:13px;">No classes today</div>' :
+        (s.today||[]).map(r=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:13px;">${r.session_id}</span>
+          <span class="badge ${r.status==='present'?'badge-green':'badge-red'}">${r.status}</span>
+        </div>`).join('')}
+    </div>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  STUDENTS PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderStudents() {
+  const students = state.students || [];
+  if (students === null) {
+    return `<div class="loading"><div class="spinner"></div><div>Loading students...</div></div>`;
+  }
+  return `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+  <div>
+    <input type="text" id="studentSearch" placeholder="🔍 Search by name, roll, section..." style="width:320px;" oninput="filterStudents(this.value)"/>
+  </div>
+  ${state.user.role==='admin'?`<button class="btn btn-primary" id="addStudentBtn">➕ Add Student</button>`:''}
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Roll Number</th><th>Name</th><th>Email</th><th>Section</th><th>Face</th><th>Status</th>${state.user.role==='admin'?'<th>Actions</th>':''}</tr></thead>
+      <tbody id="studentsTbody">
+        ${renderStudentRows(students)}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+function renderStudentRows(students) {
+  if (!students.length) return `<tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No students found</div></div></td></tr>`;
+  return students.map(s=>`<tr>
+    <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${s.roll_number}</td>
+    <td>${s.name}</td>
+    <td style="font-size:12px;color:var(--muted);">${s.email}</td>
+    <td><span class="badge badge-blue">Sec ${s.section}</span></td>
+    <td>${s.face_encoded?'<span class="badge badge-green">✓ Registered</span>':'<span class="badge badge-yellow">Pending</span>'}</td>
+    <td>${s.is_active?'<span class="badge badge-green">Active</span>':'<span class="badge badge-red">Inactive</span>'}</td>
+    ${state.user.role==='admin'?`<td>
+      <button class="btn btn-ghost btn-sm" onclick="editStudent(${s.id})">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id},'${s.name}')">🗑</button>
+    </td>`:''}
+  </tr>`).join('');
+}
+
+function filterStudents(q) {
+  const lower = q.toLowerCase();
+  const filtered = state.students.filter(s =>
+    s.name.toLowerCase().includes(lower) ||
+    s.roll_number.toLowerCase().includes(lower) ||
+    s.section.toLowerCase().includes(lower)
+  );
+  document.getElementById('studentsTbody').innerHTML = renderStudentRows(filtered);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  TEACHERS PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderTeachers() {
+  const teachers = state.teachers || [];
+  return `
+<div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+  <button class="btn btn-primary" id="addTeacherBtn">➕ Add Teacher</button>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Emp ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${teachers.length===0?`<tr><td colspan="6"><div class="empty"><div class="empty-icon">👨‍🏫</div><div class="empty-text">No teachers added yet</div></div></td></tr>`:
+        teachers.map(t=>`<tr>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${t.employee_id}</td>
+          <td>${t.name}</td>
+          <td style="font-size:12px;color:var(--muted);">${t.email}</td>
+          <td>${t.department}</td>
+          <td>${t.designation}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="deleteTeacher(${t.id},'${t.name}')">🗑</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  SUBJECTS PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderSubjects() {
+  const subjects = state.subjects || [];
+  return `
+<div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+  ${state.user.role==='admin'?`<button class="btn btn-primary" id="addSubjectBtn">➕ Add Subject</button>`:''}
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Name</th><th>Teacher</th><th>Semester</th><th>Credits</th>${state.user.role==='admin'?'<th>Actions</th>':''}</tr></thead>
+      <tbody>
+        ${subjects.length===0?`<tr><td colspan="6"><div class="empty"><div class="empty-icon">📚</div><div class="empty-text">No subjects added</div></div></td></tr>`:
+        subjects.map(s=>`<tr>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${s.code}</td>
+          <td>${s.name}</td>
+          <td>${s.teacher_name||'—'}</td>
+          <td>Sem ${s.semester}</td>
+          <td>${s.credits}</td>
+          ${state.user.role==='admin'?`<td><button class="btn btn-danger btn-sm" onclick="deleteSubject(${s.id})">🗑</button></td>`:''}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  SESSIONS PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderSessions() {
+  const sessions = state.sessions || [];
+  return `
+<div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+  <button class="btn btn-primary" id="newSessionBtn">▶ Start New Session</button>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Subject</th><th>Date</th><th>Start</th><th>Section</th><th>Present</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${sessions.length===0?`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No sessions yet</div></div></td></tr>`:
+        sessions.map(s=>`<tr>
+          <td>${s.subject_name}<br><span style="font-size:11px;color:var(--muted);">${s.subject_code}</span></td>
+          <td>${s.date}</td>
+          <td>${s.start_time}</td>
+          <td>Sec ${s.section}</td>
+          <td><strong>${s.attendance_count}</strong></td>
+          <td>${s.is_active?'<span class="badge badge-green">🟢 Active</span>':'<span class="badge badge-gray">Closed</span>'}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="viewSession(${s.id})">👁 View</button>
+            ${s.is_active?`<button class="btn btn-danger btn-sm" onclick="closeSession(${s.id})">⏹ Close</button>`:''}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  TAKE ATTENDANCE PAGE  
+// ──────────────────────────────────────────────────────────────────────────────
+function renderTakeAttendance() {
+  return `
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">🎭 Face Recognition Attendance</div></div>
+    <div id="sessionSelector" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label>Select Subject</label>
+        <select id="attSubjectSel">
+          <option value="">-- Select Subject --</option>
+          ${state.subjects.map(s=>`<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Section</label>
+        <select id="attSectionSel">
+          <option value="A">Section A</option>
+          <option value="B">Section B</option>
+          <option value="C">Section C</option>
+        </select>
+      </div>
+      <button class="btn btn-success" id="startSessionBtn" style="width:100%;justify-content:center;">▶ Start Session</button>
+    </div>
+    <div id="cameraSection" style="display:none;">
+      <div class="camera-wrap" id="cameraWrap">
+        <video id="webcam" class="camera-video" autoplay muted playsinline style="max-height:260px;object-fit:cover;"></video>
+        <canvas id="snapCanvas" style="display:none;"></canvas>
+        <div class="camera-overlay"><div class="face-guide"></div></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="btn btn-primary" id="captureBtn" style="flex:1;justify-content:center;">📸 Capture & Recognize</button>
+        <button class="btn btn-ghost" id="stopCameraBtn">⏹ Stop</button>
+      </div>
+      <div id="recognizeResult" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 Manual Override</div>
+      <div id="activeSessionBadge"></div>
+    </div>
+    <div id="manualList">
+      <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Start a session to see students</div></div>
+    </div>
+  </div>
+</div>
+<div id="sessionRecordsSection" style="display:none;margin-top:20px;" class="card">
+  <div class="card-header"><div class="card-title">✅ Today's Attendance Records</div><button class="btn btn-ghost btn-sm" id="refreshRecordsBtn">🔄 Refresh</button></div>
+  <div id="sessionRecordsList"></div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  MY ATTENDANCE (Student)
+// ──────────────────────────────────────────────────────────────────────────────
+function renderMyAttendance() {
+  const records = state.myAttendance || [];
+  const total   = records.length;
+  const present = records.filter(r=>r.status==='present').length;
+  const pct     = total ? ((present/total)*100).toFixed(1) : 0;
+  return `
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+  <div class="stat-card blue"><div class="stat-icon">📅</div><div class="stat-val">${total}</div><div class="stat-label">Total Classes</div></div>
+  <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-val">${present}</div><div class="stat-label">Present</div></div>
+  <div class="stat-card red"><div class="stat-icon">❌</div><div class="stat-val">${total-present}</div><div class="stat-label">Absent</div></div>
+  <div class="stat-card ${pct>=75?'green':'red'}"><div class="stat-icon">📊</div><div class="stat-val">${pct}%</div><div class="stat-label">Percentage</div></div>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Subject</th><th>Date</th><th>Time</th><th>Status</th><th>Method</th></tr></thead>
+      <tbody>
+        ${records.length===0?`<tr><td colspan="5"><div class="empty"><div class="empty-icon">📅</div><div class="empty-text">No attendance records</div></div></td></tr>`:
+        records.map(r=>`<tr>
+          <td>${r.session_id}</td>
+          <td>${new Date(r.timestamp).toLocaleDateString('en-IN')}</td>
+          <td>${new Date(r.timestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td>
+          <td><span class="badge ${r.status==='present'?'badge-green':r.status==='late'?'badge-yellow':'badge-red'}">${r.status}</span></td>
+          <td><span class="badge badge-blue">${r.method}</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  FACE REGISTRATION PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderFaceRegister() {
+  const isStudent = state.user.role === 'student';
+  return `
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">📸 Capture Face Images</div><span class="badge badge-blue" id="captureCount">0 / 5</span></div>
+    ${!isStudent?`
+    <div class="form-group">
+      <label>Select Student</label>
+      <select id="faceStudentSel">
+        <option value="">-- Select Student --</option>
+        ${state.students.map(s=>`<option value="${s.id}" data-roll="${s.roll_number}">${s.roll_number} — ${s.name}</option>`).join('')}
+      </select>
+    </div>`:''}
+    <div class="camera-wrap" id="faceCameraWrap" style="margin-bottom:12px;">
+      <video id="faceWebcam" class="camera-video" autoplay muted playsinline style="max-height:280px;object-fit:cover;"></video>
+      <canvas id="faceCanvas" style="display:none;"></canvas>
+      <div class="camera-overlay"><div class="face-guide"></div></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="startFaceCamBtn" style="flex:1;justify-content:center;">📷 Start Camera</button>
+      <button class="btn btn-ghost" id="captureFaceBtn" disabled>📸 Capture</button>
+    </div>
+    <div id="faceCaptureGrid" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"></div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-success" id="registerFaceBtn" disabled style="width:100%;justify-content:center;">🎭 Register Face</button>
+    </div>
+    <div id="faceRegResult" style="margin-top:10px;"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Registration Status</div></div>
+    <div id="faceStatusList">
+      ${(state.students||[]).map(s=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:13px;font-weight:500;">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${s.roll_number}</div>
+        </div>
+        <span class="badge ${s.face_encoded?'badge-green':'badge-yellow'}">${s.face_encoded?'✓ Done':'Pending'}</span>
+      </div>`).join('')}
+      ${!state.students.length?'<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No students loaded</div></div>':''}
+    </div>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  VIOLATIONS PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderViolations() {
+  const violations = state.violations || [];
+  return `
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">🚨 Geofence Violations</div>
+    <span class="badge badge-red">${violations.filter(v=>!v.resolved).length} Active</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Student</th><th>Roll No</th><th>Distance Outside</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        ${violations.length===0?`<tr><td colspan="6"><div class="empty"><div class="empty-icon">🛡</div><div class="empty-text">No violations recorded</div></div></td></tr>`:
+        violations.map(v=>`<tr>
+          <td>${v.student_name}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${v.roll_number}</td>
+          <td><strong style="color:var(--danger);">${Math.round(v.distance_m)}m</strong> from campus</td>
+          <td>${new Date(v.timestamp).toLocaleString('en-IN',{dateStyle:'short',timeStyle:'short'})}</td>
+          <td>${v.resolved?'<span class="badge badge-green">✓ Resolved</span>':'<span class="badge badge-red">⚠ Active</span>'}</td>
+          <td>${!v.resolved&&state.user.role==='admin'?`<button class="btn btn-success btn-sm" onclick="resolveViolation(${v.id})">✓ Resolve</button>`:'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  GEOFENCE SETUP PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderGeofence() {
+  return `
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">📍 Set Campus Boundary</div></div>
+    <div class="alert alert-info">GPS coordinates define the center of the campus. All students must stay within the radius during college hours.</div>
+    <div class="form-group">
+      <label>Campus Name</label>
+      <input type="text" id="gfName" value="College Campus" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Latitude</label>
+        <input type="number" id="gfLat" step="0.000001" placeholder="e.g. 17.385044" />
+      </div>
+      <div class="form-group">
+        <label>Longitude</label>
+        <input type="number" id="gfLon" step="0.000001" placeholder="e.g. 78.486671" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Radius (meters)</label>
+      <input type="number" id="gfRadius" value="200" min="50" max="2000" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>College Start Time</label>
+        <input type="time" id="gfStart" value="09:00" />
+      </div>
+      <div class="form-group">
+        <label>College End Time</label>
+        <input type="time" id="gfEnd" value="17:00" />
+      </div>
+    </div>
+    <button class="btn btn-primary" id="useGpsBtn" style="margin-bottom:8px;width:100%;justify-content:center;">📡 Use My Current Location</button>
+    <button class="btn btn-success" id="saveBoundaryBtn" style="width:100%;justify-content:center;">💾 Save Boundary</button>
+    <div id="gfResult" style="margin-top:10px;"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Current Boundary</div></div>
+    <div id="currentBoundary">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div style="margin-top:16px;">
+      <div class="alert alert-info" style="font-size:12px;">
+        📱 Students need to allow location permission in their browser for geofencing to work.
+        Violations are automatically logged when a student is detected outside the campus boundary during college hours.
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  PROFILE PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderProfile() {
+  const user = state.user;
+  return `
+<div style="max-width:500px;">
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><div class="card-title">👤 Profile Information</div></div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+      <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;">${user.name[0].toUpperCase()}</div>
+      <div>
+        <div style="font-size:18px;font-weight:700;">${user.name}</div>
+        <div style="font-size:13px;color:var(--muted);">${user.email}</div>
+        <span class="badge role-${user.role} role-pill" style="margin-top:4px;">${user.role.toUpperCase()}</span>
+      </div>
+    </div>
+    ${user.role==='student'&&user.profile?`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">
+      <div><span style="color:var(--muted);">Roll No:</span> <strong style="font-family:'JetBrains Mono',monospace;">${user.profile.roll_number}</strong></div>
+      <div><span style="color:var(--muted);">Section:</span> <strong>${user.profile.section}</strong></div>
+      <div><span style="color:var(--muted);">Branch:</span> <strong>${user.profile.branch}</strong></div>
+      <div><span style="color:var(--muted);">Year/Sem:</span> <strong>${user.profile.year} / ${user.profile.semester}</strong></div>
+    </div>`:''}
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">🔐 Change Password</div></div>
+    <div class="form-group">
+      <label>Current Password</label>
+      <input type="password" id="oldPw" placeholder="Current password" />
+    </div>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" id="newPw" placeholder="Minimum 6 characters" />
+    </div>
+    <div class="form-group">
+      <label>Confirm Password</label>
+      <input type="password" id="confPw" placeholder="Repeat new password" />
+    </div>
+    <button class="btn btn-primary" id="changePwBtn" style="width:100%;justify-content:center;">Update Password</button>
+    <div id="pwResult" style="margin-top:10px;"></div>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  MODALS
+// ──────────────────────────────────────────────────────────────────────────────
+function renderModal() {
+  const m = state.modal;
+  if (m === 'addTimetable') return renderAddTimetableModal();
+  if (m === 'addStudent') return renderAddStudentModal();
+  if (m === 'addTeacher') return renderAddTeacherModal();
+  if (m === 'addSubject') return renderAddSubjectModal();
+  if (m === 'newSession') return renderNewSessionModal();
+  if (m === 'viewSession') return renderViewSessionModal();
+  return '';
+}
+
+function renderAddStudentModal() {
+  return `
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Add New Student</div>
+      <button class="btn-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="font-size:12px;">Email format: 24981a05XX@college.edu · Password: roll number (auto-set)</div>
+      <div class="form-row">
+        <div class="form-group"><label>Full Name *</label><input type="text" id="sName" placeholder="Student Name" /></div>
+        <div class="form-group"><label>Roll Number * (24981A05XX)</label><input type="text" id="sRoll" placeholder="e.g. 24981A0501" /></div>
+      </div>
+      <div class="form-group"><label>Email * (24981a05xx@college.edu)</label><input type="email" id="sEmail" placeholder="24981a0501@college.edu" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Section</label><select id="sSection"><option>A</option><option>B</option><option>C</option></select></div>
+        <div class="form-group"><label>Branch</label><select id="sBranch"><option>CSE</option><option>ECE</option><option>EEE</option><option>MECH</option><option>CIVIL</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Phone</label><input type="tel" id="sPhone" placeholder="Student phone" /></div>
+        <div class="form-group"><label>Parent Phone</label><input type="tel" id="sParent" placeholder="Parent phone" /></div>
+      </div>
+      <div class="form-group"><label>Address</label><textarea id="sAddr" rows="2" placeholder="Full address"></textarea></div>
+      <div id="addStudentErr"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="closeModal2">Cancel</button>
+      <button class="btn btn-primary" id="saveStudentBtn">💾 Save Student</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderAddTeacherModal() {
+  return `
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Add New Teacher</div>
+      <button class="btn-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Full Name *</label><input type="text" id="tName" placeholder="Teacher Name" /></div>
+        <div class="form-group"><label>Employee ID *</label><input type="text" id="tEmpId" placeholder="e.g. EMP001" /></div>
+      </div>
+      <div class="form-group"><label>Email *</label><input type="email" id="tEmail" placeholder="teacher@college.edu" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Department</label><select id="tDept"><option>CSE</option><option>ECE</option><option>EEE</option><option>MECH</option></select></div>
+        <div class="form-group"><label>Designation</label><select id="tDesg"><option>Assistant Professor</option><option>Associate Professor</option><option>Professor</option><option>HOD</option></select></div>
+      </div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="tPhone" placeholder="Phone number" /></div>
+      <div class="form-group"><label>Password (default: employee ID)</label><input type="text" id="tPw" placeholder="Leave blank for employee ID" /></div>
+      <div id="addTeacherErr"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="closeModal2">Cancel</button>
+      <button class="btn btn-primary" id="saveTeacherBtn">💾 Save Teacher</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderAddSubjectModal() {
+  return `
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Add Subject</div>
+      <button class="btn-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Subject Name *</label><input type="text" id="subName" placeholder="e.g. Data Structures" /></div>
+        <div class="form-group"><label>Subject Code *</label><input type="text" id="subCode" placeholder="e.g. CS201" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Teacher</label>
+          <select id="subTeacher">
+            <option value="">-- Select Teacher --</option>
+            ${state.teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Credits</label><select id="subCredits"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></div>
+      </div>
+      <div id="addSubjectErr"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="closeModal2">Cancel</button>
+      <button class="btn btn-primary" id="saveSubjectBtn">💾 Save Subject</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderNewSessionModal() {
+  return `
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">▶ Start Attendance Session</div>
+      <button class="btn-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Subject *</label>
+        <select id="sessSubject">
+          <option value="">-- Select Subject --</option>
+          ${state.subjects.map(s=>`<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Section</label><select id="sessSection"><option>A</option><option>B</option><option>C</option></select></div>
+        <div class="form-group"><label>Start Time</label><input type="time" id="sessTime" value="${new Date().toTimeString().slice(0,5)}" /></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="closeModal2">Cancel</button>
+      <button class="btn btn-success" id="createSessionBtn">▶ Start Session</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderViewSessionModal() {
+  const records = state.modalData || { session: {}, records: [] };
+  const s = records.session;
+  const r = records.records || [];
+  const present = r.filter(x=>x.status==='present').length;
+  return `
+<div class="modal-bg" id="modalBg">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 Session: ${s.subject_name||'—'} · ${s.date||''}</div>
+      <button class="btn-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;margin-bottom:16px;">
+        <span class="badge badge-blue">Section ${s.section}</span>
+        <span class="badge badge-green">✅ ${present} Present</span>
+        <span class="badge badge-red">❌ ${r.length-present} Absent</span>
+      </div>
+      <div class="table-wrap" style="max-height:400px;overflow-y:auto;">
+        <table>
+          <thead><tr><th>Roll No</th><th>Name</th><th>Status</th><th>Method</th><th>Time</th></tr></thead>
+          <tbody>
+            ${r.map(x=>`<tr>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${x.roll_number}</td>
+              <td>${x.name}</td>
+              <td><span class="badge ${x.status==='present'?'badge-green':x.status==='not_marked'?'badge-gray':'badge-red'}">${x.status}</span></td>
+              <td>${x.method?`<span class="badge badge-blue">${x.method}</span>`:'—'}</td>
+              <td style="font-size:12px;">${x.timestamp?new Date(x.timestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):''}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" id="closeModal2">Close</button></div>
+  </div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  BIND NAVIGATION
+// ──────────────────────────────────────────────────────────────────────────────
+function bindNav() {
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.page = el.dataset.page;
+      state.modal = null;
+      render();
+      loadPageData();
+    });
+  });
+  document.getElementById('logoutBtn')?.addEventListener('click', logout);
+  // Quickaction buttons inside dashboard
+  document.querySelectorAll('[data-page]').forEach(el => {
+    if (!el.classList.contains('nav-item')) {
+      el.addEventListener('click', () => {
+        state.page = el.dataset.page;
+        render();
+        loadPageData();
+      });
+    }
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  BIND PAGE ACTIONS
+// ──────────────────────────────────────────────────────────────────────────────
+function bindPage() {
+  // Close modal
+  document.getElementById('closeModal')?.addEventListener('click', () => { state.modal = null; render(); });
+  document.getElementById('closeModal2')?.addEventListener('click', () => { state.modal = null; render(); });
+  document.getElementById('modalBg')?.addEventListener('click', (e) => { if(e.target.id==='modalBg'){state.modal=null;render();} });
+
+  // Students
+  document.getElementById('addStudentBtn')?.addEventListener('click', () => {
+    state.modal = 'addStudent'; render(); bindPage();
+  });
+  document.getElementById('saveStudentBtn')?.addEventListener('click', saveStudent);
+
+  // Teachers
+  document.getElementById('addTeacherBtn')?.addEventListener('click', () => {
+    state.modal = 'addTeacher'; render(); bindPage();
+  });
+  document.getElementById('saveTeacherBtn')?.addEventListener('click', saveTeacher);
+
+  // Subjects
+  document.getElementById('addSubjectBtn')?.addEventListener('click', () => {
+    state.modal = 'addSubject'; render(); bindPage();
+  });
+  document.getElementById('saveSubjectBtn')?.addEventListener('click', saveSubject);
+
+  // Sessions
+  document.getElementById('newSessionBtn')?.addEventListener('click', () => {
+    state.modal = 'newSession'; render(); bindPage();
+  });
+  document.getElementById('createSessionBtn')?.addEventListener('click', createSession);
+
+  // Take attendance
+  document.getElementById('startSessionBtn')?.addEventListener('click', startAttendanceSession);
+  document.getElementById('captureBtn')?.addEventListener('click', captureAndRecognize);
+  document.getElementById('stopCameraBtn')?.addEventListener('click', stopCamera);
+  document.getElementById('refreshRecordsBtn')?.addEventListener('click', refreshRecords);
+
+  // Face register
+  document.getElementById('startFaceCamBtn')?.addEventListener('click', startFaceCamera);
+  document.getElementById('captureFaceBtn')?.addEventListener('click', captureFaceImage);
+  document.getElementById('registerFaceBtn')?.addEventListener('click', registerFace);
+
+  // Geofence
+  document.getElementById('useGpsBtn')?.addEventListener('click', useCurrentLocation);
+  document.getElementById('saveBoundaryBtn')?.addEventListener('click', saveBoundary);
+  if (state.page === 'geofence') loadCurrentBoundary();
+
+  // Timetable
+  document.getElementById('addTimetableBtn')?.addEventListener('click', async () => {
+    if (!state.subjects || !state.subjects.length) state.subjects = await api('GET', '/admin/subjects', null, 'subjects');
+    state.modal = 'addTimetable'; render(); bindPage();
+  });
+  document.getElementById('saveTimetableBtn')?.addEventListener('click', saveTimetableEntry);
+
+  // Profile
+  document.getElementById('changePwBtn')?.addEventListener('click', changePassword);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  STUDENT CRUD
+// ──────────────────────────────────────────────────────────────────────────────
+async function saveStudent() {
+  const name  = document.getElementById('sName').value.trim();
+  const roll  = document.getElementById('sRoll').value.trim().toUpperCase();
+  const email = document.getElementById('sEmail').value.trim().toLowerCase();
+  const section= document.getElementById('sSection').value;
+  const branch = document.getElementById('sBranch').value;
+  const phone  = document.getElementById('sPhone').value;
+  const parent = document.getElementById('sParent').value;
+  const addr   = document.getElementById('sAddr').value;
+
+  const errEl = document.getElementById('addStudentErr');
+  if (!name||!roll||!email) { errEl.innerHTML=`<div class="alert alert-error">Fill all required fields</div>`; return; }
+  if (!roll.match(/^24981A05[0-9A-Za-z]{2}$/i)) { errEl.innerHTML=`<div class="alert alert-error">Roll must be: 24981A05XX (XX = 2 chars)</div>`; return; }
+
+  try {
+    const res = await api('POST','/admin/students',{name,roll_number:roll,email,section,branch,phone,parent_phone:parent,address:addr});
+    state.modal = null;
+    state.students = await api('GET','/admin/students',null,'students');
+    render(); loadPageData();
+    showToast(`✅ Student ${name} added! Default password: ${roll}`);
+  } catch(e) { errEl.innerHTML=`<div class="alert alert-error">${e.message}</div>`; }
+}
+
+async function deleteStudent(id, name) {
+  if (!confirm(`Delete student "${name}"? This will remove all their attendance records.`)) return;
+  try {
+    await api('DELETE',`/admin/students/${id}`);
+    state.students = await api('GET','/admin/students',null,'students');
+    render(); showToast('🗑 Student deleted');
+  } catch(e) { showToast('❌ '+e.message, 'error'); }
+}
+
+function editStudent(id) {
+  // For simplicity, show info toast; full edit modal can be extended
+  showToast('✏️ Edit student: feature coming — use add + delete for now');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  TEACHER CRUD
+// ──────────────────────────────────────────────────────────────────────────────
+async function saveTeacher() {
+  const name  = document.getElementById('tName').value.trim();
+  const empId = document.getElementById('tEmpId').value.trim();
+  const email = document.getElementById('tEmail').value.trim().toLowerCase();
+  const dept  = document.getElementById('tDept').value;
+  const desg  = document.getElementById('tDesg').value;
+  const phone = document.getElementById('tPhone').value;
+  const pw    = document.getElementById('tPw').value || empId;
+
+  const errEl = document.getElementById('addTeacherErr');
+  if (!name||!empId||!email) { errEl.innerHTML=`<div class="alert alert-error">Fill all required fields</div>`; return; }
+
+  try {
+    await api('POST','/admin/teachers',{name,employee_id:empId,email,department:dept,designation:desg,phone,password:pw});
+    state.modal = null;
+    state.teachers = await api('GET','/admin/teachers',null,'teachers');
+    render(); showToast(`✅ Teacher ${name} added!`);
+  } catch(e) { errEl.innerHTML=`<div class="alert alert-error">${e.message}</div>`; }
+}
+
+async function deleteTeacher(id, name) {
+  if (!confirm(`Delete teacher "${name}"?`)) return;
+  try {
+    await api('DELETE',`/admin/teachers/${id}`);
+    state.teachers = await api('GET','/admin/teachers',null,'teachers');
+    render(); showToast('🗑 Teacher deleted');
+  } catch(e) { showToast('❌ '+e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  SUBJECT CRUD
+// ──────────────────────────────────────────────────────────────────────────────
+async function saveSubject() {
+  const name    = document.getElementById('subName').value.trim();
+  const code    = document.getElementById('subCode').value.trim();
+  const teacher = document.getElementById('subTeacher').value;
+  const credits = document.getElementById('subCredits').value;
+  const errEl   = document.getElementById('addSubjectErr');
+  if (!name||!code) { errEl.innerHTML=`<div class="alert alert-error">Name and code required</div>`; return; }
+
+  try {
+    await api('POST','/admin/subjects',{name,code,teacher_id:teacher||null,credits:parseInt(credits),semester:2,branch:'CSE'});
+    state.modal = null;
+    state.subjects = await api('GET','/admin/subjects',null,'subjects');
+    render(); showToast('✅ Subject added!');
+  } catch(e) { errEl.innerHTML=`<div class="alert alert-error">${e.message}</div>`; }
+}
+
+async function deleteSubject(id) {
+  if (!confirm('Delete this subject?')) return;
+  try {
+    await api('DELETE',`/admin/subjects/${id}`);
+    state.subjects = await api('GET','/admin/subjects',null,'subjects');
+    render(); showToast('🗑 Subject deleted');
+  } catch(e) { showToast('❌ '+e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  SESSIONS
+// ──────────────────────────────────────────────────────────────────────────────
+async function createSession() {
+  const subjectId = document.getElementById('sessSubject').value;
+  const section   = document.getElementById('sessSection').value;
+  const time      = document.getElementById('sessTime').value;
+  if (!subjectId) { showToast('Select a subject','error'); return; }
+
+  try {
+    await api('POST','/attendance/sessions',{subject_id:subjectId,section,start_time:time});
+    state.modal = null;
+    state.sessions = await api('GET','/attendance/sessions',null,'sessions');
+    render(); showToast('▶ Session started!');
+  } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+
+async function closeSession(id) {
+  if (!confirm('Close this session? Remaining students will be marked absent.')) return;
+  try {
+    await api('POST',`/attendance/sessions/${id}/close`);
+    state.sessions = await api('GET','/attendance/sessions',null,'sessions');
+    render(); showToast('⏹ Session closed');
+  } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+
+async function viewSession(id) {
+  try {
+    const data = await api('GET',`/attendance/sessions/${id}/records`);
+    state.modal = 'viewSession';
+    state.modalData = data;
+    render(); bindPage();
+  } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  TAKE ATTENDANCE — Camera & Face Recognition
+// ──────────────────────────────────────────────────────────────────────────────
+let activeCamera = null;
+let activeTakeSessionId = null;
+
+async function startAttendanceSession() {
+  const subjectId = document.getElementById('attSubjectSel')?.value;
+  const section   = document.getElementById('attSectionSel')?.value;
+  if (!subjectId) { showToast('Select a subject','error'); return; }
+
+  try {
+    const res = await api('POST','/attendance/sessions',{subject_id:subjectId,section,start_time:new Date().toTimeString().slice(0,5)});
+    activeTakeSessionId = res.session.id;
+    document.getElementById('sessionSelector').style.display='none';
+    document.getElementById('cameraSection').style.display='block';
+    document.getElementById('activeSessionBadge').innerHTML=`<span class="badge badge-green">Session #${activeTakeSessionId} Active</span>`;
+
+    // Load students
+    const students = await api('GET',`/admin/students`);
+    const sectionStudents = students.filter(s=>s.section===section);
+    renderManualList(sectionStudents, activeTakeSessionId);
+
+    // Start camera
+    await startCamera('webcam');
+    showToast('▶ Session started! Camera ready');
+  } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+
+async function startCamera(videoId) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+    const video  = document.getElementById(videoId);
+    video.srcObject = stream;
+    activeCamera = stream;
+  } catch(e) {
+    showToast('📷 Camera access denied or not available','error');
+  }
+}
+
+function stopCamera() {
+  if (activeCamera) { activeCamera.getTracks().forEach(t=>t.stop()); activeCamera=null; }
+  document.getElementById('sessionSelector').style.display='block';
+  document.getElementById('cameraSection').style.display='none';
+  activeTakeSessionId = null;
+}
+
+async function captureAndRecognize() {
+  if (!activeTakeSessionId) { showToast('Start a session first','error'); return; }
+  const video   = document.getElementById('webcam');
+  const canvas  = document.getElementById('snapCanvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const imgData = canvas.toDataURL('image/jpeg',0.8);
+
+  const resultDiv = document.getElementById('recognizeResult');
+  resultDiv.innerHTML = `<div class="alert alert-info">🔍 Recognizing face...</div>`;
+
+  try {
+    const res = await api('POST','/face/recognize',{image:imgData,tolerance:0.45});
+    const matches = res.matches || [];
+    const matched = matches.find(m=>m.matched);
+
+    if (matched) {
+      // Mark attendance
+      await api('POST','/attendance/mark/face',{
+        session_id: activeTakeSessionId,
+        student_id: matched.student_id,
+        confidence: matched.confidence
+      });
+      resultDiv.innerHTML=`<div class="alert alert-success">✅ <strong>${matched.student_name}</strong> (${matched.roll_number}) marked present! Confidence: ${matched.confidence}%</div>`;
+      refreshRecords();
+    } else {
+      resultDiv.innerHTML=`<div class="alert alert-error">❌ Face not recognized. Try again or use manual override.</div>`;
+    }
+  } catch(e) {
+    if (e.message.includes('already')) resultDiv.innerHTML=`<div class="alert alert-warn">⚠ Already marked present</div>`;
+    else resultDiv.innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`;
+  }
+}
+
+function renderManualList(students, sessionId) {
+  const el = document.getElementById('manualList');
+  if (!students.length) { el.innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No students in section</div></div>'; return; }
+  el.innerHTML=`<div style="max-height:350px;overflow-y:auto;">${students.map(s=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);" id="manual_${s.id}">
+      <div>
+        <div style="font-size:13px;font-weight:500;">${s.name}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${s.roll_number}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-success btn-sm" onclick="manualMark(${s.id},${sessionId},'present')">✅ P</button>
+        <button class="btn btn-ghost btn-sm" onclick="manualMark(${s.id},${sessionId},'late')">⏰ L</button>
+        <button class="btn btn-danger btn-sm" onclick="manualMark(${s.id},${sessionId},'absent')">❌ A</button>
+      </div>
+    </div>`).join('')}</div>`;
+  document.getElementById('sessionRecordsSection').style.display='block';
+}
+
+async function manualMark(studentId, sessionId, status) {
+  try {
+    await api('POST','/attendance/mark/manual',{session_id:sessionId,student_id:studentId,status});
+    const row = document.getElementById(`manual_${studentId}`);
+    if (row) row.style.background = status==='present'?'rgba(16,185,129,.1)':status==='late'?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)';
+    showToast(`✅ Marked ${status}`);
+  } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+
+async function refreshRecords() {
+  if (!activeTakeSessionId) return;
+  try {
+    const data = await api('GET',`/attendance/sessions/${activeTakeSessionId}/records`);
+    const r = data.records || [];
+    const present = r.filter(x=>x.status==='present').length;
+    document.getElementById('sessionRecordsList').innerHTML=`
+      <div style="margin-bottom:10px;display:flex;gap:10px;">
+        <span class="badge badge-green">✅ ${present} Present</span>
+        <span class="badge badge-red">❌ ${r.filter(x=>x.status==='absent').length} Absent</span>
+        <span class="badge badge-gray">— ${r.filter(x=>x.status==='not_marked').length} Not marked</span>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Roll</th><th>Name</th><th>Status</th><th>Method</th></tr></thead>
+      <tbody>${r.map(x=>`<tr>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${x.roll_number}</td>
+        <td>${x.name}</td>
+        <td><span class="badge ${x.status==='present'?'badge-green':x.status==='not_marked'?'badge-gray':'badge-red'}">${x.status}</span></td>
+        <td>${x.method?`<span class="badge badge-blue">${x.method}</span>`:'—'}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) {}
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  FACE REGISTRATION
+// ──────────────────────────────────────────────────────────────────────────────
+let faceCapturedImages = [];
+let faceCamera = null;
+
+async function startFaceCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+    const video  = document.getElementById('faceWebcam');
+    video.srcObject = stream;
+    faceCamera = stream;
+    document.getElementById('captureFaceBtn').disabled = false;
+    document.getElementById('startFaceCamBtn').textContent = '🔄 Restart Camera';
+  } catch(e) { showToast('📷 Camera access denied','error'); }
+}
+
+function captureFaceImage() {
+  const video  = document.getElementById('faceWebcam');
+  const canvas = document.getElementById('faceCanvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const imgData = canvas.toDataURL('image/jpeg',0.8);
+  faceCapturedImages.push(imgData);
+
+  const grid = document.getElementById('faceCaptureGrid');
+  const img  = document.createElement('img');
+  img.src  = imgData;
+  img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:8px;border:2px solid var(--accent);';
+  grid.appendChild(img);
+
+  document.getElementById('captureCount').textContent = `${faceCapturedImages.length} / 5`;
+  if (faceCapturedImages.length >= 3) document.getElementById('registerFaceBtn').disabled = false;
+  if (faceCapturedImages.length >= 5) document.getElementById('captureFaceBtn').disabled = true;
+}
+
+async function registerFace() {
+  const isStudent = state.user.role === 'student';
+  let studentId;
+
+  if (isStudent) {
+    studentId = state.user.profile?.id;
+    if (!studentId) { showToast('Student profile not found','error'); return; }
+  } else {
+    studentId = document.getElementById('faceStudentSel')?.value;
+    if (!studentId) { showToast('Select a student first','error'); return; }
+  }
+
+  const resultEl = document.getElementById('faceRegResult');
+  resultEl.innerHTML = `<div class="alert alert-info">🔄 Processing face encodings...</div>`;
+
+  try {
+    const res = await api('POST','/face/register',{student_id:parseInt(studentId),images:faceCapturedImages});
+    resultEl.innerHTML = `<div class="alert alert-success">✅ ${res.message}</div>`;
+    faceCapturedImages = [];
+    document.getElementById('faceCaptureGrid').innerHTML = '';
+    document.getElementById('captureCount').textContent = '0 / 5';
+    document.getElementById('registerFaceBtn').disabled = true;
+
+    // Refresh student list
+    if (state.user.role !== 'student') {
+      state.students = await api('GET','/admin/students',null,'students');
+    }
+    render(); bindPage();
+    if (faceCamera) { faceCamera.getTracks().forEach(t=>t.stop()); }
+    await startFaceCamera();
+  } catch(e) { resultEl.innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  GEOFENCE
+// ──────────────────────────────────────────────────────────────────────────────
+function useCurrentLocation() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported','error'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById('gfLat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('gfLon').value = pos.coords.longitude.toFixed(6);
+    showToast('📡 Location captured!');
+  }, () => showToast('❌ Location access denied','error'));
+}
+
+async function saveBoundary() {
+  const lat    = parseFloat(document.getElementById('gfLat').value);
+  const lon    = parseFloat(document.getElementById('gfLon').value);
+  const radius = parseFloat(document.getElementById('gfRadius').value);
+  const start  = document.getElementById('gfStart').value;
+  const end    = document.getElementById('gfEnd').value;
+  const name   = document.getElementById('gfName').value;
+  const resEl  = document.getElementById('gfResult');
+
+  if (isNaN(lat)||isNaN(lon)) { resEl.innerHTML=`<div class="alert alert-error">Lat/Lon required</div>`; return; }
+
+  try {
+    await api('POST','/geofence/boundary',{latitude:lat,longitude:lon,radius_meters:radius,college_start:start,college_end:end,name});
+    resEl.innerHTML=`<div class="alert alert-success">✅ Boundary saved successfully!</div>`;
+    loadCurrentBoundary();
+  } catch(e) { resEl.innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`; }
+}
+
+async function loadCurrentBoundary() {
+  try {
+    const data = await api('GET','/geofence/boundary');
+    const el = document.getElementById('currentBoundary');
+    if (!el) return;
+    if (!data.configured) {
+      el.innerHTML = `<div class="alert alert-warn">⚠ No boundary configured yet</div>`;
+      return;
+    }
+    const b = data.boundary;
+    el.innerHTML = `
+      <div style="font-size:13px;display:grid;gap:10px;">
+        <div><span style="color:var(--muted);">Name:</span> <strong>${b.name}</strong></div>
+        <div><span style="color:var(--muted);">Latitude:</span> <strong style="font-family:'JetBrains Mono',monospace;">${b.latitude}</strong></div>
+        <div><span style="color:var(--muted);">Longitude:</span> <strong style="font-family:'JetBrains Mono',monospace;">${b.longitude}</strong></div>
+        <div><span style="color:var(--muted);">Radius:</span> <strong>${b.radius_meters}m</strong></div>
+        <div><span style="color:var(--muted);">Hours:</span> <strong>${b.college_start} — ${b.college_end}</strong></div>
+        <div><span class="badge badge-green">✅ Active</span></div>
+      </div>`;
+  } catch(e) {}
+}
+
+async function resolveViolation(id) {
+  try {
+    await api('POST',`/geofence/violations/${id}/resolve`,{note:'Resolved by admin'});
+    state.violations = await api('GET','/geofence/violations',null,'violations');
+    render(); showToast('✅ Violation resolved');
+  } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  PROFILE
+// ──────────────────────────────────────────────────────────────────────────────
+async function changePassword() {
+  const old  = document.getElementById('oldPw').value;
+  const nw   = document.getElementById('newPw').value;
+  const conf = document.getElementById('confPw').value;
+  const resEl = document.getElementById('pwResult');
+
+  if (!old||!nw||!conf) { resEl.innerHTML=`<div class="alert alert-error">All fields required</div>`; return; }
+  if (nw !== conf) { resEl.innerHTML=`<div class="alert alert-error">Passwords don't match</div>`; return; }
+  if (nw.length < 6) { resEl.innerHTML=`<div class="alert alert-error">Min 6 characters</div>`; return; }
+
+  try {
+    await api('POST','/auth/change-password',{old_password:old,new_password:nw});
+    resEl.innerHTML=`<div class="alert alert-success">✅ Password updated!</div>`;
+  } catch(e) { resEl.innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  TOAST NOTIFICATION
+// ──────────────────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 18px;border-radius:10px;font-size:13.5px;font-weight:500;font-family:'Space Grotesk',Arial,sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideIn .2s ease;max-width:360px;`;
+  el.style.background = type==='error'?'#450a0a':type==='warn'?'#422006':'#052e16';
+  el.style.color = type==='error'?'#f87171':type==='warn'?'#fbbf24':'#4ade80';
+  el.style.border = `1px solid ${type==='error'?'rgba(239,68,68,.3)':type==='warn'?'rgba(245,158,11,.3)':'rgba(16,185,129,.3)'}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.animation='slideOut .2s ease'; setTimeout(()=>el.remove(),200); },3000);
+}
+const style = document.createElement('style');
+style.textContent = `@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}@keyframes slideOut{to{opacity:0;transform:translateX(20px)}}`;
+document.head.appendChild(style);
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  GEOFENCE BACKGROUND CHECK (for students)
+// ──────────────────────────────────────────────────────────────────────────────
+let geofenceInterval = null;
+function startGeofenceMonitoring() {
+  if (!state.user || state.user.role !== 'student') return;
+  if (!navigator.geolocation) return;
+  geofenceInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        const res = await api('POST','/geofence/check',{
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        });
+        if (!res.inside) {
+          showToast(`⚠ You are ${res.distance_meters}m outside campus boundary!`, 'warn');
+        }
+      } catch(e) {}
+    }, ()=>{}, {enableHighAccuracy:true});
+  }, 60000); // Check every minute
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  CLOCK UPDATE
+// ──────────────────────────────────────────────────────────────────────────────
+setInterval(() => {
+  const el = document.querySelector('.time-display');
+  if (el) {
+    const now = new Date();
+    const ts  = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const ds  = now.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
+    el.textContent = `${ts} · ${ds}`;
+  }
+}, 1000);
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  TIMETABLE PAGE
+// ──────────────────────────────────────────────────────────────────────────────
+function renderTimetable() {
+  const entries = state.timetable || [];
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const isAdmin = state.user.role === 'admin';
+  const today = new Date().toLocaleDateString('en-US',{weekday:'long'});
+  const nowTime = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
+
+  const byDay = {};
+  days.forEach(d => byDay[d] = []);
+  entries.forEach(e => { if (byDay[e.day]) byDay[e.day].push(e); });
+  days.forEach(d => byDay[d].sort((a,b) => a.start_time.localeCompare(b.start_time)));
+
+  return `
+<div style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+  <div style="display:flex;gap:8px;align-items:center;">
+    <span class="badge badge-blue">📅 ${today}</span>
+    <span class="badge badge-gray" style="font-family:'JetBrains Mono',monospace;">${nowTime}</span>
+  </div>
+  ${isAdmin ? `<button class="btn btn-primary" id="addTimetableBtn">➕ Add Period</button>` : ''}
+</div>
+<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px;">
+  ${days.map(day => {
+    const isToday = day === today;
+    const dayEntries = byDay[day];
+    return `<div class="card" style="padding:14px;${isToday?'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);':''}">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+        color:${isToday?'var(--accent)':'var(--muted)'};margin-bottom:10px;">
+        ${isToday?'🟢 ':''} ${day.slice(0,3)}
+      </div>
+      ${dayEntries.length === 0
+        ? `<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0;">No classes</div>`
+        : dayEntries.map(e => {
+          const isNow = isToday && e.start_time <= nowTime && nowTime <= e.end_time;
+          return `<div style="background:${isNow?'rgba(59,130,246,.15)':'var(--surface2)'};
+            border:1px solid ${isNow?'var(--accent)':'var(--border)'};
+            border-radius:8px;padding:8px;margin-bottom:6px;position:relative;">
+            ${isNow?`<div style="position:absolute;top:5px;right:5px;width:6px;height:6px;background:var(--accent);border-radius:50%;"></div>`:''}
+            <div style="font-size:11px;font-weight:600;color:${isNow?'var(--accent)':'var(--text)'};">${e.subject_name||'—'}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;">${e.start_time}–${e.end_time}</div>
+            <div style="font-size:10px;color:var(--muted);">Sec ${e.section}</div>
+            ${isAdmin?`<button onclick="deleteTimetableEntry(${e.id})"
+              style="position:absolute;bottom:3px;right:3px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;"
+              >🗑</button>`:''}
+          </div>`;
+        }).join('')}
+    </div>`;
+  }).join('')}
+</div>
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">All Periods</div>
+    <span class="badge badge-blue">${entries.length} total</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Day</th><th>Subject</th><th>Start</th><th>End</th><th>Section</th>${isAdmin?'<th>Action</th>':''}</tr></thead>
+      <tbody>
+        ${entries.length===0
+          ?`<tr><td colspan="6"><div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">No timetable entries yet. Click ➕ Add Period to start.</div></div></td></tr>`
+          :entries.map(e=>`<tr>
+            <td><span class="badge ${e.day===today?'badge-blue':'badge-gray'}">${e.day}</span></td>
+            <td><strong>${e.subject_name||'—'}</strong></td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${e.start_time}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${e.end_time}</td>
+            <td><span class="badge badge-blue">Sec ${e.section}</span></td>
+            ${isAdmin?`<td><button class="btn btn-danger btn-sm" onclick="deleteTimetableEntry(${e.id})">🗑</button></td>`:''}
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+function renderAddTimetableModal() {
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const subjects = state.subjects || [];
+  return `
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Add Timetable Entry</div>
+      <button class="btn-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Day *</label>
+          <select id="ttDay">${days.map(d=>`<option value="${d}">${d}</option>`).join('')}</select>
+        </div>
+        <div class="form-group"><label>Section</label>
+          <select id="ttSection">
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Subject *</label>
+        <select id="ttSubject">
+          <option value="">-- Select Subject --</option>
+          ${subjects.map(s=>`<option value="${s.id}" data-teacher="${s.teacher_id||''}">${s.name} (${s.code})</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Start Time *</label><input type="time" id="ttStart" value="09:00" /></div>
+        <div class="form-group"><label>End Time *</label><input type="time" id="ttEnd" value="10:00" /></div>
+      </div>
+      <div id="ttErr"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="closeModal2">Cancel</button>
+      <button class="btn btn-primary" id="saveTimetableBtn">💾 Save Entry</button>
+    </div>
+  </div>
+</div>`;
+}
+
+async function saveTimetableEntry() {
+  const day       = document.getElementById('ttDay').value;
+  const section   = document.getElementById('ttSection').value;
+  const subjectEl = document.getElementById('ttSubject');
+  const subjectId = subjectEl.value;
+  const teacherId = subjectEl.options[subjectEl.selectedIndex]?.dataset?.teacher || 1;
+  const start     = document.getElementById('ttStart').value;
+  const end       = document.getElementById('ttEnd').value;
+  const errEl     = document.getElementById('ttErr');
+
+  if (!subjectId) { errEl.innerHTML=`<div class="alert alert-error">Select a subject</div>`; return; }
+  if (start >= end) { errEl.innerHTML=`<div class="alert alert-error">End time must be after start time</div>`; return; }
+
+  try {
+    await api('POST', '/admin/timetable', {
+      subject_id: parseInt(subjectId),
+      teacher_id: parseInt(teacherId) || 1,
+      section, day,
+      start_time: start,
+      end_time: end
+    });
+    state.modal = null;
+    state.timetable = await api('GET', '/admin/timetable', null, 'timetable');
+    render(); showToast('✅ Timetable entry added!');
+  } catch(e) { errEl.innerHTML=`<div class="alert alert-error">❌ ${e.message}</div>`; }
+}
+
+async function deleteTimetableEntry(id) {
+  if (!confirm('Delete this timetable entry?')) return;
+  try {
+    await api('DELETE', `/admin/timetable/${id}`);
+    state.timetable = await api('GET', '/admin/timetable', null, 'timetable');
+    render(); showToast('🗑 Entry deleted');
+  } catch(e) { showToast('❌ '+e.message, 'error'); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  INITIAL RENDER
+
+// ──────────────────────────────────────────────────────────────────────────────
+render();
+if (state.user) {
+  loadPageData();
+  startGeofenceMonitoring();
+}
+</script>
+</body>
+</html>
